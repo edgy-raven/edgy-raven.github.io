@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Unified Reasoning Taxonomy Alignment | squareqrow</title>
+  <meta name="description" content="Notes on systems, software, and whatever else survives the queue." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Orbitron:wght@500;700&display=swap"
+    rel="stylesheet"
+  />
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/katex@0.15.1/dist/katex.min.css"
+    integrity="sha384-R4558gYOUz8mP9YWpZJjofhk+zx0AS11p36HnD2ZKj/6JR5z27gSSULCNHIRReVs"
+    crossorigin="anonymous"
+  />
+  <link rel="stylesheet" href="https://squareqrow.com/theme/css/main.css" />
+  <script defer src="https://squareqrow.com/theme/js/card.js"></script>
+</head>
+<body>
+  <div class="site-shell">
+    <main>
+<article class="content-page">
+  <header class="content-header">
+    <p class="eyebrow"><a class="subtle-link" href="https://squareqrow.com/index.html">squareqrow</a></p>
+    <h1>Unified Reasoning Taxonomy Alignment</h1>
+  </header>
+  <div class="content-body">
+    <h1>Unified Reasoning Taxonomy Alignment</h1>
+<p>This document is the implementation plan for the alignment pipeline: how to map
+activation dimensions from several medical-reasoning models into one shared
+taxonomy. It is not meant to be an exhaustive derivation of standard numerical
+routines. It records the custom modeling choices, the order in which the real
+pipeline should run, and the failed experiments that explain why those choices
+are in the plan.</p>
+<p>The selected implementation still lives in <code>medinterp/alignment</code>. This
+directory records the cleaned methodology and the artifacts selected from that
+workspace.</p>
+<h2>Current Artifacts</h2>
+<p>Input:</p>
+<div class="highlight"><pre><span></span><code>medinterp/alignment2/sentences.jsonl
+</code></pre></div>
+
+<p>Pairwise dimension correlations:</p>
+<div class="highlight"><pre><span></span><code>medinterp/alignment/repair_loopback_full_cases_300.json
+</code></pre></div>
+
+<p>No-fixed dimension groups:</p>
+<div class="highlight"><pre><span></span><code>medinterp/alignment/no_fixed_full_cases_groups.json
+</code></pre></div>
+
+<p>No-fixed group labels:</p>
+<div class="highlight"><pre><span></span><code>medinterp/alignment/no_fixed_full_cases_group_labels.json
+medinterp/alignment/no_fixed_full_cases_group_labels.txt
+</code></pre></div>
+
+<p>The no-fixed grouping is preferred over the older U1/U7 fixed-anchor grouping.
+The fixed anchors were useful as diagnostics, but they are human priors rather
+than structure recovered by the current objective.</p>
+<h2>Inputs</h2>
+<p>Each row is one sentence from one model trace:</p>
+<div class="highlight"><pre><span></span><code>model
+pmcid
+sentence_index
+text
+activation_dimensions
+</code></pre></div>
+
+<p>The trace key is <code>(model, pmcid)</code>. The sentence key is
+<code>(model, pmcid, sentence_index)</code>. <code>sentence_index</code> is zero-based and ordered
+within each trace.</p>
+<p>The current run aligns five models:</p>
+<div class="highlight"><pre><span></span><code>deepseek-r1-distill-llama-8b  D = 18
+deepseek-r1-distill-qwen-14b  D = 20
+gpt-oss-20b                   D = 14
+huatuogpt-o1-8b               D = 18
+qwq-32b                       D = 10
+</code></pre></div>
+
+<p>Do not filter sentences before matching or grouping. Short filler sentences,
+introductory sentences, and degenerate-looking transitions can carry phase
+information. Degenerate rows are handled only as a projection-time override
+after the taxonomy exists.</p>
+<h2>Pipeline</h2>
+<h3>1. Normalize Activations</h3>
+<p>Normalize activations within each model and dimension. Let $x_{m,c,t,d}$ be
+the raw activation for model <code>m</code>, case <code>c</code>, sentence <code>t</code>, and dimension <code>d</code>:</p>
+<p><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mtable rowspacing="0.25em" columnalign="right left" columnspacing="0em"><mtr><mtd><mstyle scriptlevel="0" displaystyle="true"><msub><mi>μ</mi><mrow><mi>m</mi><mo separator="true">,</mo><mi>d</mi></mrow></msub></mstyle></mtd><mtd><mstyle scriptlevel="0" displaystyle="true"><mrow><mrow></mrow><mo>=</mo><msub><mrow><mi mathvariant="normal">mean</mi><mo>⁡</mo></mrow><mrow><mi>c</mi><mo separator="true">,</mo><mi>t</mi></mrow></msub><msub><mi>x</mi><mrow><mi>m</mi><mo separator="true">,</mo><mi>c</mi><mo separator="true">,</mo><mi>t</mi><mo separator="true">,</mo><mi>d</mi></mrow></msub><mo separator="true">,</mo></mrow></mstyle></mtd></mtr><mtr><mtd><mstyle scriptlevel="0" displaystyle="true"><msub><mi>σ</mi><mrow><mi>m</mi><mo separator="true">,</mo><mi>d</mi></mrow></msub></mstyle></mtd><mtd><mstyle scriptlevel="0" displaystyle="true"><mrow><mrow></mrow><mo>=</mo><msub><mrow><mi mathvariant="normal">std</mi><mo>⁡</mo></mrow><mrow><mi>c</mi><mo separator="true">,</mo><mi>t</mi></mrow></msub><msub><mi>x</mi><mrow><mi>m</mi><mo separator="true">,</mo><mi>c</mi><mo separator="true">,</mo><mi>t</mi><mo separator="true">,</mo><mi>d</mi></mrow></msub><mo separator="true">,</mo></mrow></mstyle></mtd></mtr><mtr><mtd><mstyle scriptlevel="0" displaystyle="true"><msub><mi>z</mi><mrow><mi>m</mi><mo separator="true">,</mo><mi>c</mi><mo separator="true">,</mo><mi>t</mi><mo separator="true">,</mo><mi>d</mi></mrow></msub></mstyle></mtd><mtd><mstyle scriptlevel="0" displaystyle="true"><mrow><mrow></mrow><mo>=</mo><mfrac><mrow><msub><mi>x</mi><mrow><mi>m</mi><mo separator="true">,</mo><mi>c</mi><mo separator="true">,</mo><mi>t</mi><mo separator="true">,</mo><mi>d</mi></mrow></msub><mo>−</mo><msub><mi>μ</mi><mrow><mi>m</mi><mo separator="true">,</mo><mi>d</mi></mrow></msub></mrow><msub><mi>σ</mi><mrow><mi>m</mi><mo separator="true">,</mo><mi>d</mi></mrow></msub></mfrac><mi mathvariant="normal">.</mi></mrow></mstyle></mtd></mtr></mtable><annotation encoding="application/x-tex">
+\begin{aligned}
+\mu_{m,d} &amp;= \operatorname{mean}_{c,t} x_{m,c,t,d},\\
+\sigma_{m,d} &amp;= \operatorname{std}_{c,t} x_{m,c,t,d},\\
+z_{m,c,t,d} &amp;= \frac{x_{m,c,t,d}-\mu_{m,d}}{\sigma_{m,d}}.
+\end{aligned}
+</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:5.5324em;vertical-align:-2.5162em;"></span><span class="mord"><span class="mtable"><span class="col-align-r"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:3.0162em;"><span style="top:-5.4365em;"><span class="pstrut" style="height:3.2603em;"></span><span class="mord"><span class="mord"><span class="mord mathnormal">μ</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">m</span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight">d</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span></span></span><span style="top:-3.9365em;"><span class="pstrut" style="height:3.2603em;"></span><span class="mord"><span class="mord"><span class="mord mathnormal" style="margin-right:0.03588em;">σ</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:-0.0359em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">m</span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight">d</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span></span></span><span style="top:-2.0162em;"><span class="pstrut" style="height:3.2603em;"></span><span class="mord"><span class="mord"><span class="mord mathnormal" style="margin-right:0.04398em;">z</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:-0.044em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">m</span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight">c</span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight">t</span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight">d</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:2.5162em;"><span></span></span></span></span></span><span class="col-align-l"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:3.0162em;"><span style="top:-5.4365em;"><span class="pstrut" style="height:3.2603em;"></span><span class="mord"><span class="mord"></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mop"><span class="mop"><span class="mord mathrm">mean</span></span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.2806em;"><span style="top:-2.55em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">c</span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight">t</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal">x</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">m</span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight">c</span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight">t</span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight">d</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span><span class="mpunct">,</span></span></span><span style="top:-3.9365em;"><span class="pstrut" style="height:3.2603em;"></span><span class="mord"><span class="mord"></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mop"><span class="mop"><span class="mord mathrm">std</span></span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.2806em;"><span style="top:-2.55em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">c</span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight">t</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal">x</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">m</span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight">c</span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight">t</span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight">d</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span><span class="mpunct">,</span></span></span><span style="top:-2.0162em;"><span class="pstrut" style="height:3.2603em;"></span><span class="mord"><span class="mord"></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.2603em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord"><span class="mord mathnormal" style="margin-right:0.03588em;">σ</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:-0.0359em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">m</span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight">d</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord"><span class="mord mathnormal">x</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">m</span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight">c</span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight">t</span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight">d</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mord"><span class="mord mathnormal">μ</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">m</span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight">d</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.9721em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span><span class="mord">.</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:2.5162em;"><span></span></span></span></span></span></span></span></span></span></span></span></p>
+<p>If $\sigma_{m,d} = 0$, set it to <code>1</code>. Use positive activations for pairwise
+alignment:</p>
+<p><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><msub><mi>a</mi><mrow><mi>m</mi><mo separator="true">,</mo><mi>c</mi><mo separator="true">,</mo><mi>t</mi><mo separator="true">,</mo><mi>d</mi></mrow></msub><mo>=</mo><mi>max</mi><mo>⁡</mo><mo stretchy="false">(</mo><mn>0</mn><mo separator="true">,</mo><msub><mi>z</mi><mrow><mi>m</mi><mo separator="true">,</mo><mi>c</mi><mo separator="true">,</mo><mi>t</mi><mo separator="true">,</mo><mi>d</mi></mrow></msub><mo stretchy="false">)</mo><mi mathvariant="normal">.</mi></mrow><annotation encoding="application/x-tex">
+a_{m,c,t,d} = \max(0, z_{m,c,t,d}).
+</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.7167em;vertical-align:-0.2861em;"></span><span class="mord"><span class="mord mathnormal">a</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">m</span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight">c</span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight">t</span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight">d</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1.0361em;vertical-align:-0.2861em;"></span><span class="mop">max</span><span class="mopen">(</span><span class="mord">0</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.04398em;">z</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:-0.044em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">m</span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight">c</span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight">t</span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight">d</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span><span class="mclose">)</span><span class="mord">.</span></span></span></span></span></p>
+<p>Use absolute correlations later during grouping. A dimension may encode the
+same reasoning function with opposite activation direction across models, so
+anti-correlation is still alignment evidence.</p>
+<h3>2. Estimate Reasoning Phase Per Model</h3>
+<p>Build a per-model state model from the traces. The state model should estimate
+where each activation dimension tends to occur in reasoning progress, not just
+where a sentence appears by raw index.</p>
+<p>For each model:</p>
+<ol>
+<li>Convert each sentence's normalized activation vector into a soft
+   distribution over dimensions.</li>
+<li>Use those distributions across traces to estimate a posterior progress
+   distribution for each dimension.</li>
+<li>For any sentence, define its phase distribution as the activation-weighted
+   mixture of its dimension progress distributions.</li>
+</ol>
+<p>The key requirement is that phase depends on the path through activated
+dimensions, not only on sentence index. Raw sentence index is too weak a proxy
+because traces have different lengths and models sometimes loop back to earlier
+reasoning functions.</p>
+<h3>3. Score Sentence Pairs</h3>
+<p>For each shared case and model pair, score every cross-model sentence pair.
+Use <code>text-embedding-3-small</code> sentence embeddings for text similarity and the
+state model for phase similarity.</p>
+<p>Embeddings are L2-normalized. Text similarity is clipped cosine similarity:</p>
+<p><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><msub><mrow><mi mathvariant="normal">sim</mi><mo>⁡</mo></mrow><mtext>text</mtext></msub><mo stretchy="false">(</mo><mi>u</mi><mo separator="true">,</mo><mi>v</mi><mo stretchy="false">)</mo><mo>=</mo><mi>max</mi><mo>⁡</mo><mo stretchy="false">(</mo><mn>0</mn><mo separator="true">,</mo><msubsup><mover accent="true"><mi>e</mi><mo>^</mo></mover><mi>u</mi><mi mathvariant="normal">⊤</mi></msubsup><msub><mover accent="true"><mi>e</mi><mo>^</mo></mover><mi>v</mi></msub><mo stretchy="false">)</mo><mi mathvariant="normal">.</mi></mrow><annotation encoding="application/x-tex">
+\operatorname{sim}_{\text{text}}(u,v)
+  = \max(0, \hat e_u^\top \hat e_v).
+</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mop"><span class="mop"><span class="mord mathrm">sim</span></span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.2806em;"><span style="top:-2.55em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">text</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mopen">(</span><span class="mord mathnormal">u</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.03588em;">v</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1.1491em;vertical-align:-0.25em;"></span><span class="mop">max</span><span class="mopen">(</span><span class="mord">0</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord accent"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.6944em;"><span style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord mathnormal">e</span></span><span style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="accent-body" style="left:-0.1944em;"><span class="mord">^</span></span></span></span></span></span></span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.8991em;"><span style="top:-2.453em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">u</span></span></span><span style="top:-3.113em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">⊤</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.247em;"><span></span></span></span></span></span></span><span class="mord"><span class="mord accent"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.6944em;"><span style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord mathnormal">e</span></span><span style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="accent-body" style="left:-0.1944em;"><span class="mord">^</span></span></span></span></span></span></span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.03588em;">v</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mclose">)</span><span class="mord">.</span></span></span></span></span></p>
+<p>Phase similarity is cosine similarity between posterior phase distributions:</p>
+<p><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><msub><mrow><mi mathvariant="normal">sim</mi><mo>⁡</mo></mrow><mtext>phase</mtext></msub><mo stretchy="false">(</mo><mi>u</mi><mo separator="true">,</mo><mi>v</mi><mo stretchy="false">)</mo><mo>=</mo><mfrac><mrow><msubsup><mi>p</mi><mi>u</mi><mi mathvariant="normal">⊤</mi></msubsup><msub><mi>p</mi><mi>v</mi></msub></mrow><mrow><mo stretchy="false">∥</mo><msub><mi>p</mi><mi>u</mi></msub><mo stretchy="false">∥</mo><mo stretchy="false">∥</mo><msub><mi>p</mi><mi>v</mi></msub><mo stretchy="false">∥</mo></mrow></mfrac><mi mathvariant="normal">.</mi></mrow><annotation encoding="application/x-tex">
+\operatorname{sim}_{\text{phase}}(u,v)
+  = \frac{p_u^\top p_v}{\lVert p_u\rVert \lVert p_v\rVert}.
+</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.0361em;vertical-align:-0.2861em;"></span><span class="mop"><span class="mop"><span class="mord mathrm">sim</span></span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">phase</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span><span class="mopen">(</span><span class="mord mathnormal">u</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.03588em;">v</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:2.4621em;vertical-align:-0.936em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.5261em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mopen">∥</span><span class="mord"><span class="mord mathnormal">p</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">u</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mclose">∥</span><span class="mopen">∥</span><span class="mord"><span class="mord mathnormal">p</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.03588em;">v</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mclose">∥</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord"><span class="mord mathnormal">p</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.8491em;"><span style="top:-2.453em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">u</span></span></span><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">⊤</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.247em;"><span></span></span></span></span></span></span><span class="mord"><span class="mord mathnormal">p</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.03588em;">v</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.936em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span><span class="mord">.</span></span></span></span></span></p>
+<p>The sentence-pair score is multiplicative:</p>
+<p><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><msub><mi>M</mi><mrow><mi>u</mi><mo separator="true">,</mo><mi>v</mi></mrow></msub><mo>=</mo><msub><mrow><mi mathvariant="normal">sim</mi><mo>⁡</mo></mrow><mtext>text</mtext></msub><mo stretchy="false">(</mo><mi>u</mi><mo separator="true">,</mo><mi>v</mi><mo stretchy="false">)</mo><msub><mrow><mi mathvariant="normal">sim</mi><mo>⁡</mo></mrow><mtext>phase</mtext></msub><mo stretchy="false">(</mo><mi>u</mi><mo separator="true">,</mo><mi>v</mi><mo stretchy="false">)</mo><mi mathvariant="normal">.</mi></mrow><annotation encoding="application/x-tex">
+M_{u,v}
+  = \operatorname{sim}_{\text{text}}(u,v)
+    \operatorname{sim}_{\text{phase}}(u,v).
+</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.9694em;vertical-align:-0.2861em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.10903em;">M</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:-0.109em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">u</span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight" style="margin-right:0.03588em;">v</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1.0361em;vertical-align:-0.2861em;"></span><span class="mop"><span class="mop"><span class="mord mathrm">sim</span></span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.2806em;"><span style="top:-2.55em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">text</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mopen">(</span><span class="mord mathnormal">u</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.03588em;">v</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mop"><span class="mop"><span class="mord mathrm">sim</span></span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord text mtight"><span class="mord mtight">phase</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span><span class="mopen">(</span><span class="mord mathnormal">u</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.03588em;">v</span><span class="mclose">)</span><span class="mord">.</span></span></span></span></span></p>
+<p>The multiplication is intentional. It avoids letting a strong text match in
+the wrong reasoning phase, or a compatible phase match with unrelated text,
+dominate the alignment.</p>
+<h3>4. Build Sentence Alignment Weights</h3>
+<p>Use the match matrix $M$ to produce a soft alignment matrix for each case and
+model pair. The implementation should preserve three constraints:</p>
+<ol>
+<li>Allow <code>1:1</code>, <code>1:many</code>, and <code>many:1</code> local alignments because traces have
+   different sentence granularity.</li>
+<li>Avoid unconstrained <code>many:many</code> matching because it washes out sentence
+   specificity.</li>
+<li>Allow loopbacks only when they are clearly better than the local monotone
+   scaffold in phase-aware score.</li>
+</ol>
+<p>Recommended implementation:</p>
+<ol>
+<li>Compute an optimal-transport warm start over the sentence-pair score matrix.
+   This gives a soft global mass assignment without committing to a brittle
+   hard path.</li>
+<li>Extract a monotone dynamic-programming scaffold from the warm start and
+   match score. This scaffold represents broad trace progression.</li>
+<li>Form local anchor chunks from the scaffold. The chunks define the default
+   local sentence-pair weights.</li>
+<li>Audit reciprocal nonlocal loopback candidates. A candidate may replace the
+   local scaffold match only if it is reciprocal best among remaining
+   candidates and improves both its row and column under $M_{u,v}$ and
+   $\operatorname{sim}_{\text{phase}}(u,v)$.</li>
+<li>Normalize the final repair matrix to sum to one within the case.</li>
+</ol>
+<p>The current artifact was generated with the repair-loopback anchor matcher
+without the optimal-transport warm start. The production implementation should
+add the warm start because the matching problem is the main source of alignment
+noise and the warm start makes the scaffold less dependent on local dynamic
+programming accidents.</p>
+<h3>5. Estimate Dimension Similarity</h3>
+<p>For each model pair, use the accepted sentence-pair weights to compute weighted
+correlations between activation dimensions. This is a standard weighted
+correlation calculation and does not need a custom implementation beyond
+respecting the sentence weights. Replace non-finite correlations with <code>0</code>.</p>
+<p>For grouping, use absolute correlation:</p>
+<p><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><msub><mi>A</mi><mrow><mi>p</mi><mo separator="true">,</mo><mi>q</mi></mrow></msub><mo>=</mo><mi mathvariant="normal">∣</mi><msub><mi>R</mi><mrow><mi>p</mi><mo separator="true">,</mo><mi>q</mi></mrow></msub><mi mathvariant="normal">∣</mi><mi mathvariant="normal">.</mi></mrow><annotation encoding="application/x-tex">
+A_{p,q} = |R_{p,q}|.
+</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.9694em;vertical-align:-0.2861em;"></span><span class="mord"><span class="mord mathnormal">A</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">p</span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight" style="margin-right:0.03588em;">q</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1.0361em;vertical-align:-0.2861em;"></span><span class="mord">∣</span><span class="mord"><span class="mord mathnormal" style="margin-right:0.00773em;">R</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:-0.0077em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">p</span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight" style="margin-right:0.03588em;">q</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span><span class="mord">∣.</span></span></span></span></span></p>
+<p>Use the same alignment method across every model pair. Do not compare
+same-model dimensions when computing cross-model consistency.</p>
+<h3>6. Optimize Dimension Groups</h3>
+<p>Search for unified groups over all dimensions. Do not fix the number of groups
+and do not impose fixed U1/U7 anchors in the objective.</p>
+<p>The selected objective uses:</p>
+<div class="highlight"><pre><span></span><code>correlation_mode = abs
+orthogonal_floor = 0.0
+orthogonality_objective = additive-leak
+consistency_objective = all-pairs
+score_objective = all-score-f1
+consistency_score_weight = 1.0
+group_count_penalty = 0.0
+search_runs = 20
+refine_passes = 2
+</code></pre></div>
+
+<p>Seed each candidate group with one close dimension per model where possible.
+Assign remaining dimensions by group affinity, then refine by moving dimensions
+between groups when the objective improves. Run several searches; the result
+should not depend on a single random seed.</p>
+<p>All-pairs consistency asks whether the cross-model dimensions inside a group
+are mutually compatible, not just whether each dimension has one good mate:</p>
+<p><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mtable rowspacing="0.25em" columnalign="right left" columnspacing="0em"><mtr><mtd><mstyle scriptlevel="0" displaystyle="true"><mrow><mi>C</mi><mo stretchy="false">(</mo><mi>G</mi><mo stretchy="false">)</mo></mrow></mstyle></mtd><mtd><mstyle scriptlevel="0" displaystyle="true"><mrow><mrow></mrow><mo>=</mo><msub><mrow><mi mathvariant="normal">mean</mi><mo>⁡</mo></mrow><mstyle scriptlevel="1"><mtable rowspacing="0.1em" columnalign="center" columnspacing="1em"><mtr><mtd><mstyle scriptlevel="1" displaystyle="false"><mrow><mi>p</mi><mo separator="true">,</mo><mi>q</mi><mo>∈</mo><mi>G</mi></mrow></mstyle></mtd></mtr><mtr><mtd><mstyle scriptlevel="1" displaystyle="false"><mrow><mi mathvariant="normal">model</mi><mo>⁡</mo><mo stretchy="false">(</mo><mi>p</mi><mo stretchy="false">)</mo><mo mathvariant="normal">≠</mo><mi mathvariant="normal">model</mi><mo>⁡</mo><mo stretchy="false">(</mo><mi>q</mi><mo stretchy="false">)</mo></mrow></mstyle></mtd></mtr></mtable></mstyle></msub><msub><mi>A</mi><mrow><mi>p</mi><mo separator="true">,</mo><mi>q</mi></mrow></msub><mi mathvariant="normal">.</mi></mrow></mstyle></mtd></mtr></mtable><annotation encoding="application/x-tex">
+\begin{aligned}
+C(G)
+  &amp;= \operatorname{mean}_{\substack{p,q\in G\\
+     \operatorname{model}(p)\ne \operatorname{model}(q)}} A_{p,q}.
+\end{aligned}
+</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:2.1096em;vertical-align:-0.8048em;"></span><span class="mord"><span class="mtable"><span class="col-align-r"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3048em;"><span style="top:-3.4648em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.07153em;">C</span><span class="mopen">(</span><span class="mord mathnormal">G</span><span class="mclose">)</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.8048em;"><span></span></span></span></span></span><span class="col-align-l"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3048em;"><span style="top:-3.4648em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord"></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mop"><span class="mop"><span class="mord mathrm">mean</span></span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3448em;"><span style="top:-2.3448em;margin-right:0.05em;"><span class="pstrut" style="height:2.8322em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight"><span class="mtable"><span class="col-align-c"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.1889em;"><span style="top:-3.2556em;"><span class="pstrut" style="height:2.75em;"></span><span class="mord mtight"><span class="mord mathnormal mtight">p</span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight" style="margin-right:0.03588em;">q</span><span class="mrel mtight">∈</span><span class="mord mathnormal mtight">G</span></span></span><span style="top:-2.3111em;"><span class="pstrut" style="height:2.75em;"></span><span class="mord mtight"><span class="mop mtight"><span class="mord mathrm mtight">model</span></span><span class="mopen mtight">(</span><span class="mord mathnormal mtight">p</span><span class="mclose mtight">)</span><span class="mrel mtight"><span class="mrel mtight"><span class="mord vbox mtight"><span class="thinbox mtight"><span class="rlap mtight"><span class="strut" style="height:0.8889em;vertical-align:-0.1944em;"></span><span class="inner"><span class="mord mtight"><span class="mrel mtight"></span></span></span><span class="fix"></span></span></span></span></span><span class="mspace nobreak mtight"></span><span class="mrel mtight">=</span></span><span class="mop mtight"><span class="mord mathrm mtight">model</span></span><span class="mopen mtight">(</span><span class="mord mathnormal mtight" style="margin-right:0.03588em;">q</span><span class="mclose mtight">)</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.6889em;"><span></span></span></span></span></span></span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.9696em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal">A</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">p</span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight" style="margin-right:0.03588em;">q</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span><span class="mord">.</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.8048em;"><span></span></span></span></span></span></span></span></span></span></span></span></p>
+<p>The older member-best version was too permissive: a broad mixed group could
+score well if every dimension had one good partner, even when many other
+cross-model pairs in the same group were weak.</p>
+<p>Additive-leak orthogonality penalizes separating dimensions that still have
+large cross-group alignment values. This is the pressure that keeps the
+optimizer from creating too many tiny high-consistency groups.</p>
+<p>The group score is an F1-style combination of three summary scores:
+within-group consistency, cross-group orthogonality, and reciprocal-mate
+satisfaction. Reciprocal-mate satisfaction checks whether cross-model
+reciprocal-best dimension pairs are either in the same group or have an
+equally strong same-group alternative. Binary rogue-couple counts are reported
+as diagnostics, but they are not hard constraints because forcing every
+relative reciprocal pair together can make the smooth objective worse.</p>
+<p>There is no separate size penalty. Group count emerges from the push-pull
+between consistency, additive leakage, and reciprocal-mate satisfaction.</p>
+<h3>7. Label Groups</h3>
+<p>Generate labels after grouping, not during optimization. The labeler should see
+several rounds of evidence:</p>
+<ol>
+<li>high-positive examples for the group,</li>
+<li>medium activation-band examples,</li>
+<li>random examples from the group's assigned dimensions,</li>
+<li>contrast examples from nearby groups,</li>
+<li>original per-dimension descriptions when available.</li>
+</ol>
+<p>Use feedback iterations with a judge loop. The generator should propose a
+label and description; the judge should check specificity, overbreadth, and
+confusability with neighboring groups; the generator should revise using that
+feedback.</p>
+<p>Labels are descriptions of the current grouping, not fixed ontology terms. If
+the grouping changes, labels should be regenerated.</p>
+<p>After labels are generated, sort the generated taxonomy steps by progress in
+the unified taxonomy space. For each original activation dimension, use the
+state-machine <code>topological_progress</code> value as the primary progress coordinate
+and <code>transition_progress</code> only as a tie-breaker. For a unified group, compute
+the sentence-count-weighted mean progress over its member dimensions. The
+displayed step numbers are then assigned in ascending group progress order.
+The reserved degenerate state is not a generated taxonomy step and is displayed
+after the sorted taxonomy groups.</p>
+<h3>8. Project Sentences To Taxonomy States</h3>
+<p>For trace views, assign each sentence to the group containing its strongest
+dimension. Then apply one reserved-state override: if the full-corpus strict
+LLM degeneracy artifact
+<code>strict_llm_mini_degenerate_sentence_judgments.jsonl</code> marks the sentence as
+no-information, project it to <code>group_index = -1</code>, labeled
+<code>Degenerate No-Information</code>.</p>
+<p>The reserved state is not a generated taxonomy category. It is used for markup,
+copied prompt boilerplate, output-template text, and standalone empty filler
+such as <code>Hmm.</code>, <code>Let me think.</code>, <code>Wait.</code>, or <code>Stop.</code>.</p>
+<p>The override is sentence-level. A mixed group should not be removed wholesale:
+template rows route to <code>-1</code>, while genuine transition sentences remain in
+their generated taxonomy group.</p>
+<h2>Current Run</h2>
+<p>The selected no-fixed run:</p>
+<div class="highlight"><pre><span></span><code>objective      = 0.420
+consistency    = 0.318
+orthogonality  = 0.912
+groups         = 9
+</code></pre></div>
+
+<p>For comparison, the older exact fixed-anchor run had:</p>
+<div class="highlight"><pre><span></span><code>objective      = 0.403
+consistency    = 0.298
+orthogonality  = 0.918
+groups         = 8 mutable + 2 fixed
+</code></pre></div>
+
+<p>The current taxonomy order is:</p>
+<div class="highlight"><pre><span></span><code>01 Patient Symptom Reporting
+02 Diagnostic Case Setup
+03 Laboratory Value Interpretation
+04 Symptom-Disease Association
+05 Differential Diagnosis Exploration
+06 Hypothesis Generation
+07 Patient History Synthesis
+08 Diagnostic Conclusion Articulation
+09 Step-by-Step Evaluation
+</code></pre></div>
+
+<h2>Important Failed Experiments</h2>
+<p>These experiments should remain as diagnostics or ablations, but not as the
+default method unless a new comparison promotes them again.</p>
+<ul>
+<li>Fixed U1/U7 grouping constraints: useful for sanity checks, but they lowered
+  the selected objective and forced human priors into the taxonomy.</li>
+<li>Hard mutable group count: made the answer easier to read but hid whether the
+  objective actually preferred more or fewer groups.</li>
+<li>Positive-only grouping correlations: missed dimensions that appear to encode
+  the same function in opposite activation directions.</li>
+<li>Separate group-size penalty: duplicated the role of additive-leak
+  orthogonality and made the objective harder to interpret.</li>
+<li>Sentence filtering before alignment: removed short transitions that often
+  mark phase.</li>
+<li>IDF sentence weighting: overemphasized lexical rarity and did not address
+  the main alignment failure mode.</li>
+<li>Bootstrap stability: useful as a diagnostic, but not needed as part of the
+  core methodology.</li>
+<li>Old monotone-only sentence alignment: too rigid when traces loop back or
+  split one reasoning step across several sentences.</li>
+<li>Run compression inside traces: should remain off by default unless it proves
+  a clear benefit. The simpler uncompressed sentence alignment is easier to
+  audit.</li>
+<li>Reciprocal top-k sparsification and hard sentence caps: created hidden
+  thresholds without solving the underlying matching problem.</li>
+<li>Transport grouping: not part of the selected grouping objective. Optimal
+  transport is better used earlier as a sentence-alignment warm start.</li>
+</ul>
+<h2>Interpretation</h2>
+<p>The pipeline aligns dimensions by asking whether two model dimensions activate
+on sentences that are semantically similar, in compatible reasoning phases,
+and connected by a mostly monotone but loopback-aware sentence alignment. The
+grouping step turns those pairwise dimension similarities into a shared
+taxonomy by balancing within-group cross-model consistency against cross-group
+leakage.</p>
+  </div>
+</article>
+    </main>
+  </div>
+</body>
+</html>

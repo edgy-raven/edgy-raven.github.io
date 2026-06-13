@@ -1,0 +1,43 @@
+{
+  "title": "Transport-initialized grouping",
+  "summary": "The current full-cases grouping was compared against an entropic transport initializer for dimension grouping. The best transport run uses transport to seed the partition, then applies the existing hard local refinement.",
+  "note": "The taxonomy browser below remains the last regenerated labeled explorer. Full-cases group labels and all-case annotations are pending regeneration after the grouping choice is frozen.",
+  "rows": [
+    {
+      "label": "Canonical full-cases",
+      "status": "baseline",
+      "all_score_f1": 0.402536,
+      "bounded_push_pull": 0.446697,
+      "coverage": "min 5",
+      "promoted": false,
+      "note": "Current exact-fixed hard optimizer result on repair_loopback_full_cases_300."
+    },
+    {
+      "label": "Transport t=0.02",
+      "status": "diagnostic",
+      "all_score_f1": 0.39058,
+      "bounded_push_pull": 0.457453,
+      "coverage": "min 4",
+      "promoted": false,
+      "note": "Transport alone improves push/pull but trails all-score."
+    },
+    {
+      "label": "Transport t=0.03",
+      "status": "diagnostic",
+      "all_score_f1": 0.380881,
+      "bounded_push_pull": 0.456343,
+      "coverage": "min 4",
+      "promoted": false,
+      "note": "Coherent cross-model groups, but not enough under the current final judge."
+    },
+    {
+      "label": "Transport + refinement",
+      "status": "candidate",
+      "all_score_f1": 0.422453,
+      "bounded_push_pull": 0.467495,
+      "coverage": "min 4",
+      "promoted": true,
+      "note": "Best result: transport initialization followed by hard local refinement improves both scores without model-pure groups."
+    }
+  ]
+}

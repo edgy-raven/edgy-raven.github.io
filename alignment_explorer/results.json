@@ -1,0 +1,34 @@
+{
+  "title": "No-fixed transition-preserving alignment",
+  "summary": "The current published taxonomy uses the no-fixed repair-loopback full-cases grouping. Sentences are not removed before state construction, pairwise alignment, or group optimization. LLM-judged no-information rows are projected to reserved group -1 so transitions into and out of degenerate text remain visible without treating the text as a semantic taxonomy category.",
+  "note": "Hard sentence removal remains rejected. The published explorer uses generated no-fixed group labels and all-case annotations with a reserved degenerate projection state.",
+  "rows": [
+    {
+      "label": "No-fixed canonical",
+      "status": "published",
+      "all_score_f1": 0.420,
+      "bounded_push_pull": null,
+      "coverage": "9 groups",
+      "promoted": true,
+      "note": "Repair-loopback full-cases grouping without fixed U1/U7 anchors. All sentences are preserved for alignment and grouping."
+    },
+    {
+      "label": "Reserved degenerate projection",
+      "status": "published",
+      "all_score_f1": null,
+      "bounded_push_pull": null,
+      "coverage": "group -1",
+      "promoted": true,
+      "note": "Rows judged no-information are assigned to group -1 during annotation. Only transitions to and from that state are interpreted."
+    },
+    {
+      "label": "Hard sentence removal",
+      "status": "rejected ablation",
+      "all_score_f1": 0.335046,
+      "bounded_push_pull": null,
+      "coverage": "preprocessing filter",
+      "promoted": false,
+      "note": "Removing no-information sentences before state and pairwise construction degraded the grouping score, so this is not production."
+    }
+  ]
+}
