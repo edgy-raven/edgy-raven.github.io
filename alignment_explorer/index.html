@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Alignment Explorer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    >
+    <link rel="stylesheet" href="styles.css?v=20260626-9">
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <h1>Alignment Explorer</h1>
+          <p id="dataset-note">Loading taxonomy</p>
+        </div>
+        <a class="home-link" href="/">squareqrow</a>
+      </header>
+
+      <section class="metrics" aria-label="Dataset metrics">
+        <output id="metric-groups">- groups</output>
+        <output id="metric-annotations">- annotations</output>
+        <output id="metric-weighting">- weighting</output>
+      </section>
+
+      <section class="results-panel" aria-label="Method results">
+        <div>
+          <p class="eyebrow">Grouping results</p>
+          <h2 id="results-title">Loading results</h2>
+          <p id="results-summary"></p>
+        </div>
+        <div id="results-grid" class="results-grid"></div>
+        <p id="results-note" class="results-note"></p>
+      </section>
+
+      <section class="workspace">
+        <aside class="group-browser" aria-label="Groups">
+          <div class="controls">
+            <label>
+              <span>Search</span>
+              <input id="search-input" type="search" autocomplete="off">
+            </label>
+            <label>
+              <span>Model</span>
+              <select id="model-select"></select>
+            </label>
+          </div>
+          <nav id="group-list" class="group-list"></nav>
+        </aside>
+
+        <section class="detail-pane" aria-live="polite">
+          <div class="detail-head">
+            <div>
+              <p id="detail-step" class="eyebrow"></p>
+              <h2 id="detail-title"></h2>
+            </div>
+            <output id="detail-count" class="count-pill"></output>
+          </div>
+          <p id="detail-description" class="description"></p>
+          <div id="model-bars" class="model-bars"></div>
+
+          <div class="tabs" role="tablist" aria-label="Group detail">
+            <button id="tab-examples" class="selected" type="button">Examples</button>
+            <button id="tab-dimensions" type="button">Dimensions</button>
+            <button id="tab-traces" type="button">Traces</button>
+          </div>
+
+          <section id="panel-examples" class="panel"></section>
+          <section id="panel-dimensions" class="panel" hidden></section>
+          <section id="panel-traces" class="panel" hidden>
+            <div class="trace-controls">
+              <label>
+                <span>Case</span>
+                <select id="case-select"></select>
+              </label>
+              <div id="model-tabs" class="model-tabs"></div>
+            </div>
+            <div id="trace-meta" class="trace-meta"></div>
+            <div id="trace-progress-plot" class="progress-plot"></div>
+            <div id="trace-rail" class="trace-rail"></div>
+            <ol id="trace-list" class="trace-list"></ol>
+          </section>
+        </section>
+      </section>
+    </main>
+    <script src="app.js?v=20260626-9" defer></script>
+  </body>
+</html>

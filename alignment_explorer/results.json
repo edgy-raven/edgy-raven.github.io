@@ -1,0 +1,34 @@
+{
+  "title": "HF SAE no-fixed alignment",
+  "summary": "The current published taxonomy uses Hugging Face response text and Hugging Face SAE latent activations. The promoted canonical method keeps raw activations, transition-filtered phase inference with empirical phase profiles, repair-loopback sentence alignment, and the no-fixed grouping objective.",
+  "note": "The published explorer displays the last complete 12-group artifact plus the reserved degenerate projection state. The transition-phase pairwise artifact is promoted but still needs regeneration.",
+  "rows": [
+    {
+      "label": "HF SAE canonical",
+      "status": "published",
+      "all_score_f1": 0.5948125081766399,
+      "bounded_push_pull": null,
+      "coverage": "12 displayed groups",
+      "promoted": true,
+      "note": "No fixed U1/U7 anchors. Grouping uses the regenerated HF SAE dimensions: 20, 16, 20, 16, and 18 latents across the five models."
+    },
+    {
+      "label": "Semantic evaluation",
+      "status": "published",
+      "all_score_f1": 0.5962359848165429,
+      "bounded_push_pull": null,
+      "coverage": "combined harmonic",
+      "promoted": true,
+      "note": "GPT semantic scoring produced combined mean 0.692, harmonic 0.596, consistency 0.708, and orthogonality 0.780."
+    },
+    {
+      "label": "Reserved degenerate projection",
+      "status": "published",
+      "all_score_f1": null,
+      "bounded_push_pull": null,
+      "coverage": "17,431 rows",
+      "promoted": true,
+      "note": "Rows judged no-information and deterministic obvious template rows are assigned to group -1 during annotation. Only transitions to and from that state are interpreted."
+    }
+  ]
+}

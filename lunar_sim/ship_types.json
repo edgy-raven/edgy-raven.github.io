@@ -1,0 +1,828 @@
+[
+  {
+    "name": "SMALL_CARGO",
+    "display_name": "Small Cargo",
+    "index": 0,
+    "ogame_id": 202,
+    "metal": 2000,
+    "crystal": 2000,
+    "deuterium": 0,
+    "base_attack": 5,
+    "base_shield": 10,
+    "fuel_cost": 20,
+    "base_speed": 10000,
+    "drive_tech_id": "IMPULSE_DRIVE",
+    "rapidfire_targets": [
+      [
+        "ESPIONAGE_PROBE",
+        5
+      ],
+      [
+        "SOLAR_SATELLITE",
+        5
+      ],
+      [
+        "CRAWLER",
+        5
+      ]
+    ],
+    "base_hull": 400.0,
+    "cargo_capacity": 5000,
+    "drive_bonus": 0.2,
+    "points": 2
+  },
+  {
+    "name": "LARGE_CARGO",
+    "display_name": "Large Cargo",
+    "index": 1,
+    "ogame_id": 203,
+    "metal": 6000,
+    "crystal": 6000,
+    "deuterium": 0,
+    "base_attack": 5,
+    "base_shield": 25,
+    "fuel_cost": 50,
+    "base_speed": 7500,
+    "drive_tech_id": "COMBUSTION_DRIVE",
+    "rapidfire_targets": [
+      [
+        "ESPIONAGE_PROBE",
+        5
+      ],
+      [
+        "SOLAR_SATELLITE",
+        5
+      ],
+      [
+        "CRAWLER",
+        5
+      ]
+    ],
+    "base_hull": 1200.0,
+    "cargo_capacity": 25000,
+    "drive_bonus": 0.1,
+    "points": 6
+  },
+  {
+    "name": "LIGHT_FIGHTER",
+    "display_name": "Light Fighter",
+    "index": 2,
+    "ogame_id": 204,
+    "metal": 3000,
+    "crystal": 1000,
+    "deuterium": 0,
+    "base_attack": 50,
+    "base_shield": 10,
+    "fuel_cost": 20,
+    "base_speed": 12500,
+    "drive_tech_id": "COMBUSTION_DRIVE",
+    "rapidfire_targets": [
+      [
+        "ESPIONAGE_PROBE",
+        5
+      ],
+      [
+        "SOLAR_SATELLITE",
+        5
+      ],
+      [
+        "CRAWLER",
+        5
+      ]
+    ],
+    "base_hull": 400.0,
+    "cargo_capacity": 0,
+    "drive_bonus": 0.1,
+    "points": 4
+  },
+  {
+    "name": "HEAVY_FIGHTER",
+    "display_name": "Heavy Fighter",
+    "index": 3,
+    "ogame_id": 205,
+    "metal": 6000,
+    "crystal": 4000,
+    "deuterium": 0,
+    "base_attack": 150,
+    "base_shield": 25,
+    "fuel_cost": 75,
+    "base_speed": 10000,
+    "drive_tech_id": "IMPULSE_DRIVE",
+    "rapidfire_targets": [
+      [
+        "ESPIONAGE_PROBE",
+        5
+      ],
+      [
+        "SOLAR_SATELLITE",
+        5
+      ],
+      [
+        "CRAWLER",
+        5
+      ],
+      [
+        "SMALL_CARGO",
+        3
+      ]
+    ],
+    "base_hull": 1000.0,
+    "cargo_capacity": 0,
+    "drive_bonus": 0.2,
+    "points": 10
+  },
+  {
+    "name": "CRUISER",
+    "display_name": "Cruiser",
+    "index": 4,
+    "ogame_id": 206,
+    "metal": 20000,
+    "crystal": 7000,
+    "deuterium": 2000,
+    "base_attack": 400,
+    "base_shield": 50,
+    "fuel_cost": 300,
+    "base_speed": 15000,
+    "drive_tech_id": "IMPULSE_DRIVE",
+    "rapidfire_targets": [
+      [
+        "ESPIONAGE_PROBE",
+        5
+      ],
+      [
+        "SOLAR_SATELLITE",
+        5
+      ],
+      [
+        "CRAWLER",
+        5
+      ],
+      [
+        "LIGHT_FIGHTER",
+        6
+      ],
+      [
+        "ROCKET_LAUNCHER",
+        10
+      ]
+    ],
+    "base_hull": 2700.0,
+    "cargo_capacity": 0,
+    "drive_bonus": 0.2,
+    "points": 29
+  },
+  {
+    "name": "BATTLESHIP",
+    "display_name": "Battleship",
+    "index": 5,
+    "ogame_id": 207,
+    "metal": 45000,
+    "crystal": 15000,
+    "deuterium": 0,
+    "base_attack": 1000,
+    "base_shield": 200,
+    "fuel_cost": 500,
+    "base_speed": 10000,
+    "drive_tech_id": "HYPERSPACE_DRIVE",
+    "rapidfire_targets": [
+      [
+        "ESPIONAGE_PROBE",
+        5
+      ],
+      [
+        "SOLAR_SATELLITE",
+        5
+      ],
+      [
+        "CRAWLER",
+        5
+      ],
+      [
+        "PATHFINDER",
+        5
+      ]
+    ],
+    "base_hull": 6000.0,
+    "cargo_capacity": 0,
+    "drive_bonus": 0.3,
+    "points": 60
+  },
+  {
+    "name": "COLONY_SHIP",
+    "display_name": "Colony Ship",
+    "index": 6,
+    "ogame_id": 208,
+    "metal": 10000,
+    "crystal": 20000,
+    "deuterium": 10000,
+    "base_attack": 50,
+    "base_shield": 100,
+    "fuel_cost": 1000,
+    "base_speed": 2500,
+    "drive_tech_id": "IMPULSE_DRIVE",
+    "rapidfire_targets": [
+      [
+        "ESPIONAGE_PROBE",
+        5
+      ],
+      [
+        "SOLAR_SATELLITE",
+        5
+      ],
+      [
+        "CRAWLER",
+        5
+      ]
+    ],
+    "base_hull": 3000.0,
+    "cargo_capacity": 0,
+    "drive_bonus": 0.2,
+    "points": 20
+  },
+  {
+    "name": "RECYCLER",
+    "display_name": "Recycler",
+    "index": 7,
+    "ogame_id": 209,
+    "metal": 10000,
+    "crystal": 6000,
+    "deuterium": 2000,
+    "base_attack": 1,
+    "base_shield": 10,
+    "fuel_cost": 300,
+    "base_speed": 2000,
+    "drive_tech_id": "COMBUSTION_DRIVE",
+    "rapidfire_targets": [
+      [
+        "ESPIONAGE_PROBE",
+        5
+      ],
+      [
+        "SOLAR_SATELLITE",
+        5
+      ],
+      [
+        "CRAWLER",
+        5
+      ]
+    ],
+    "base_hull": 1600.0,
+    "cargo_capacity": 20000,
+    "drive_bonus": 0.1,
+    "points": 9
+  },
+  {
+    "name": "ESPIONAGE_PROBE",
+    "display_name": "Espionage Probe",
+    "index": 8,
+    "ogame_id": 210,
+    "metal": 0,
+    "crystal": 1000,
+    "deuterium": 0,
+    "base_attack": 0.01,
+    "base_shield": 0.01,
+    "fuel_cost": 1,
+    "base_speed": 100000000,
+    "drive_tech_id": "COMBUSTION_DRIVE",
+    "rapidfire_targets": [],
+    "base_hull": 100.0,
+    "cargo_capacity": 5,
+    "drive_bonus": 0.1,
+    "points": 0
+  },
+  {
+    "name": "BOMBER",
+    "display_name": "Bomber",
+    "index": 9,
+    "ogame_id": 211,
+    "metal": 50000,
+    "crystal": 25000,
+    "deuterium": 15000,
+    "base_attack": 1000,
+    "base_shield": 500,
+    "fuel_cost": 700,
+    "base_speed": 4000,
+    "drive_tech_id": "IMPULSE_DRIVE",
+    "rapidfire_targets": [
+      [
+        "ESPIONAGE_PROBE",
+        5
+      ],
+      [
+        "SOLAR_SATELLITE",
+        5
+      ],
+      [
+        "CRAWLER",
+        5
+      ],
+      [
+        "ROCKET_LAUNCHER",
+        20
+      ],
+      [
+        "LIGHT_LASER",
+        20
+      ],
+      [
+        "HEAVY_LASER",
+        10
+      ],
+      [
+        "GAUSS_CANNON",
+        5
+      ],
+      [
+        "ION_CANNON",
+        10
+      ],
+      [
+        "PLASMA_TURRET",
+        5
+      ]
+    ],
+    "base_hull": 7500.0,
+    "cargo_capacity": 0,
+    "drive_bonus": 0.2,
+    "points": 90
+  },
+  {
+    "name": "SOLAR_SATELLITE",
+    "display_name": "Solar Satellite",
+    "index": 10,
+    "ogame_id": 212,
+    "metal": 0,
+    "crystal": 2000,
+    "deuterium": 500,
+    "base_attack": 1,
+    "base_shield": 1,
+    "fuel_cost": 0,
+    "base_speed": 0,
+    "drive_tech_id": null,
+    "rapidfire_targets": [],
+    "base_hull": 200.0,
+    "cargo_capacity": 0,
+    "drive_bonus": 0,
+    "points": 1
+  },
+  {
+    "name": "DESTROYER",
+    "display_name": "Destroyer",
+    "index": 11,
+    "ogame_id": 213,
+    "metal": 60000,
+    "crystal": 50000,
+    "deuterium": 15000,
+    "base_attack": 2000,
+    "base_shield": 500,
+    "fuel_cost": 1000,
+    "base_speed": 5000,
+    "drive_tech_id": "HYPERSPACE_DRIVE",
+    "rapidfire_targets": [
+      [
+        "ESPIONAGE_PROBE",
+        5
+      ],
+      [
+        "SOLAR_SATELLITE",
+        5
+      ],
+      [
+        "CRAWLER",
+        5
+      ],
+      [
+        "BATTLECRUISER",
+        2
+      ],
+      [
+        "LIGHT_LASER",
+        10
+      ]
+    ],
+    "base_hull": 11000.0,
+    "cargo_capacity": 0,
+    "drive_bonus": 0.3,
+    "points": 125
+  },
+  {
+    "name": "DEATHSTAR",
+    "display_name": "Deathstar",
+    "index": 12,
+    "ogame_id": 214,
+    "metal": 5000000,
+    "crystal": 4000000,
+    "deuterium": 1000000,
+    "base_attack": 200000,
+    "base_shield": 50000,
+    "fuel_cost": 1,
+    "base_speed": 100,
+    "drive_tech_id": "HYPERSPACE_DRIVE",
+    "rapidfire_targets": [
+      [
+        "SMALL_CARGO",
+        250
+      ],
+      [
+        "LARGE_CARGO",
+        250
+      ],
+      [
+        "LIGHT_FIGHTER",
+        200
+      ],
+      [
+        "HEAVY_FIGHTER",
+        100
+      ],
+      [
+        "CRUISER",
+        33
+      ],
+      [
+        "BATTLESHIP",
+        30
+      ],
+      [
+        "COLONY_SHIP",
+        250
+      ],
+      [
+        "RECYCLER",
+        250
+      ],
+      [
+        "ESPIONAGE_PROBE",
+        1250
+      ],
+      [
+        "BOMBER",
+        25
+      ],
+      [
+        "SOLAR_SATELLITE",
+        1250
+      ],
+      [
+        "DESTROYER",
+        5
+      ],
+      [
+        "BATTLECRUISER",
+        15
+      ],
+      [
+        "CRAWLER",
+        1250
+      ],
+      [
+        "REAPER",
+        10
+      ],
+      [
+        "PATHFINDER",
+        30
+      ],
+      [
+        "ROCKET_LAUNCHER",
+        200
+      ],
+      [
+        "LIGHT_LASER",
+        200
+      ],
+      [
+        "HEAVY_LASER",
+        100
+      ],
+      [
+        "GAUSS_CANNON",
+        50
+      ],
+      [
+        "ION_CANNON",
+        100
+      ]
+    ],
+    "base_hull": 900000.0,
+    "cargo_capacity": 0,
+    "drive_bonus": 0.3,
+    "points": 10000
+  },
+  {
+    "name": "BATTLECRUISER",
+    "display_name": "Battlecruiser",
+    "index": 13,
+    "ogame_id": 215,
+    "metal": 30000,
+    "crystal": 40000,
+    "deuterium": 15000,
+    "base_attack": 700,
+    "base_shield": 400,
+    "fuel_cost": 250,
+    "base_speed": 10000,
+    "drive_tech_id": "HYPERSPACE_DRIVE",
+    "rapidfire_targets": [
+      [
+        "SMALL_CARGO",
+        3
+      ],
+      [
+        "LARGE_CARGO",
+        3
+      ],
+      [
+        "HEAVY_FIGHTER",
+        4
+      ],
+      [
+        "CRUISER",
+        4
+      ],
+      [
+        "BATTLESHIP",
+        7
+      ],
+      [
+        "ESPIONAGE_PROBE",
+        44
+      ],
+      [
+        "SOLAR_SATELLITE",
+        5
+      ],
+      [
+        "CRAWLER",
+        5
+      ]
+    ],
+    "base_hull": 7000.0,
+    "cargo_capacity": 0,
+    "drive_bonus": 0.3,
+    "points": 85
+  },
+  {
+    "name": "CRAWLER",
+    "display_name": "Crawler",
+    "index": 14,
+    "ogame_id": 217,
+    "metal": 2000,
+    "crystal": 2000,
+    "deuterium": 1000,
+    "base_attack": 1,
+    "base_shield": 1,
+    "fuel_cost": 0,
+    "base_speed": 0,
+    "drive_tech_id": null,
+    "rapidfire_targets": [],
+    "base_hull": 400.0,
+    "cargo_capacity": 0,
+    "drive_bonus": 0,
+    "points": 2
+  },
+  {
+    "name": "REAPER",
+    "display_name": "Reaper",
+    "index": 15,
+    "ogame_id": 218,
+    "metal": 85000,
+    "crystal": 55000,
+    "deuterium": 20000,
+    "base_attack": 2800,
+    "base_shield": 700,
+    "fuel_cost": 1100,
+    "base_speed": 7000,
+    "drive_tech_id": "HYPERSPACE_DRIVE",
+    "rapidfire_targets": [
+      [
+        "ESPIONAGE_PROBE",
+        5
+      ],
+      [
+        "SOLAR_SATELLITE",
+        5
+      ],
+      [
+        "CRAWLER",
+        5
+      ],
+      [
+        "BATTLESHIP",
+        7
+      ],
+      [
+        "BOMBER",
+        4
+      ],
+      [
+        "DESTROYER",
+        3
+      ]
+    ],
+    "base_hull": 14000.0,
+    "cargo_capacity": 10000,
+    "drive_bonus": 0.3,
+    "points": 160
+  },
+  {
+    "name": "PATHFINDER",
+    "display_name": "Pathfinder",
+    "index": 16,
+    "ogame_id": 219,
+    "metal": 8000,
+    "crystal": 15000,
+    "deuterium": 8000,
+    "base_attack": 200,
+    "base_shield": 100,
+    "fuel_cost": 300,
+    "base_speed": 12000,
+    "drive_tech_id": "HYPERSPACE_DRIVE",
+    "rapidfire_targets": [
+      [
+        "ESPIONAGE_PROBE",
+        5
+      ],
+      [
+        "SOLAR_SATELLITE",
+        5
+      ],
+      [
+        "CRAWLER",
+        5
+      ],
+      [
+        "LIGHT_FIGHTER",
+        3
+      ],
+      [
+        "HEAVY_FIGHTER",
+        2
+      ],
+      [
+        "CRUISER",
+        3
+      ]
+    ],
+    "base_hull": 2300.0,
+    "cargo_capacity": 10000,
+    "drive_bonus": 0.3,
+    "points": 31
+  },
+  {
+    "name": "ROCKET_LAUNCHER",
+    "display_name": "Rocket Launcher",
+    "index": 17,
+    "ogame_id": 401,
+    "metal": 2000,
+    "crystal": 0,
+    "deuterium": 0,
+    "base_attack": 80,
+    "base_shield": 20,
+    "fuel_cost": 0,
+    "base_speed": 0,
+    "drive_tech_id": null,
+    "rapidfire_targets": [],
+    "base_hull": 200.0,
+    "cargo_capacity": 0,
+    "drive_bonus": 0,
+    "points": 2
+  },
+  {
+    "name": "LIGHT_LASER",
+    "display_name": "Light Laser",
+    "index": 18,
+    "ogame_id": 402,
+    "metal": 1500,
+    "crystal": 500,
+    "deuterium": 0,
+    "base_attack": 100,
+    "base_shield": 25,
+    "fuel_cost": 0,
+    "base_speed": 0,
+    "drive_tech_id": null,
+    "rapidfire_targets": [],
+    "base_hull": 200.0,
+    "cargo_capacity": 0,
+    "drive_bonus": 0,
+    "points": 2
+  },
+  {
+    "name": "HEAVY_LASER",
+    "display_name": "Heavy Laser",
+    "index": 19,
+    "ogame_id": 403,
+    "metal": 6000,
+    "crystal": 2000,
+    "deuterium": 0,
+    "base_attack": 250,
+    "base_shield": 100,
+    "fuel_cost": 0,
+    "base_speed": 0,
+    "drive_tech_id": null,
+    "rapidfire_targets": [],
+    "base_hull": 800.0,
+    "cargo_capacity": 0,
+    "drive_bonus": 0,
+    "points": 8
+  },
+  {
+    "name": "GAUSS_CANNON",
+    "display_name": "Gauss Cannon",
+    "index": 20,
+    "ogame_id": 404,
+    "metal": 20000,
+    "crystal": 15000,
+    "deuterium": 2000,
+    "base_attack": 1100,
+    "base_shield": 200,
+    "fuel_cost": 0,
+    "base_speed": 0,
+    "drive_tech_id": null,
+    "rapidfire_targets": [],
+    "base_hull": 3500.0,
+    "cargo_capacity": 0,
+    "drive_bonus": 0,
+    "points": 37
+  },
+  {
+    "name": "ION_CANNON",
+    "display_name": "Ion Cannon",
+    "index": 21,
+    "ogame_id": 405,
+    "metal": 2000,
+    "crystal": 6000,
+    "deuterium": 0,
+    "base_attack": 150,
+    "base_shield": 500,
+    "fuel_cost": 0,
+    "base_speed": 0,
+    "drive_tech_id": null,
+    "rapidfire_targets": [
+      [
+        "REAPER",
+        2
+      ]
+    ],
+    "base_hull": 800.0,
+    "cargo_capacity": 0,
+    "drive_bonus": 0,
+    "points": 8
+  },
+  {
+    "name": "PLASMA_TURRET",
+    "display_name": "Plasma Turret",
+    "index": 22,
+    "ogame_id": 406,
+    "metal": 50000,
+    "crystal": 50000,
+    "deuterium": 30000,
+    "base_attack": 3000,
+    "base_shield": 300,
+    "fuel_cost": 0,
+    "base_speed": 0,
+    "drive_tech_id": null,
+    "rapidfire_targets": [],
+    "base_hull": 10000.0,
+    "cargo_capacity": 0,
+    "drive_bonus": 0,
+    "points": 130
+  },
+  {
+    "name": "SMALL_SHIELD_DOME",
+    "display_name": "Small Shield Dome",
+    "index": 23,
+    "ogame_id": 407,
+    "metal": 10000,
+    "crystal": 10000,
+    "deuterium": 0,
+    "base_attack": 1,
+    "base_shield": 2000,
+    "fuel_cost": 0,
+    "base_speed": 0,
+    "drive_tech_id": null,
+    "rapidfire_targets": [],
+    "base_hull": 2000.0,
+    "cargo_capacity": 0,
+    "drive_bonus": 0,
+    "points": 20
+  },
+  {
+    "name": "LARGE_SHIELD_DOME",
+    "display_name": "Large Shield Dome",
+    "index": 24,
+    "ogame_id": 408,
+    "metal": 50000,
+    "crystal": 50000,
+    "deuterium": 0,
+    "base_attack": 1,
+    "base_shield": 10000,
+    "fuel_cost": 0,
+    "base_speed": 0,
+    "drive_tech_id": null,
+    "rapidfire_targets": [],
+    "base_hull": 10000.0,
+    "cargo_capacity": 0,
+    "drive_bonus": 0,
+    "points": 100
+  }
+]

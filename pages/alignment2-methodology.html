@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Unified Reasoning Taxonomy Alignment | squareqrow</title>
+  <meta name="description" content="Notes on systems, software, and whatever else survives the queue." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Orbitron:wght@500;700&display=swap"
+    rel="stylesheet"
+  />
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/katex@0.15.1/dist/katex.min.css"
+    integrity="sha384-R4558gYOUz8mP9YWpZJjofhk+zx0AS11p36HnD2ZKj/6JR5z27gSSULCNHIRReVs"
+    crossorigin="anonymous"
+  />
+  <link rel="stylesheet" href="https://squareqrow.com/theme/css/main.css" />
+  <script defer src="https://squareqrow.com/theme/js/card.js"></script>
+  <script
+    defer
+    src="https://cdn.jsdelivr.net/npm/katex@0.15.1/dist/katex.min.js"
+    crossorigin="anonymous"
+  ></script>
+  <script
+    defer
+    src="https://cdn.jsdelivr.net/npm/katex@0.15.1/dist/contrib/auto-render.min.js"
+    crossorigin="anonymous"
+    onload="renderMathInElement(document.body, {
+      delimiters: [
+        {left: '$$', right: '$$', display: true},
+        {left: '$', right: '$', display: false}
+      ],
+      ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+    });"
+  ></script>
+</head>
+<body>
+  <div class="site-shell">
+    <main>
+<article class="content-page">
+  <header class="content-header">
+    <p class="eyebrow"><a class="subtle-link" href="https://squareqrow.com/index.html">squareqrow</a></p>
+    <h1>Unified Reasoning Taxonomy Alignment</h1>
+  </header>
+  <div class="content-body">
+    <h1>Unified Reasoning Taxonomy Alignment</h1>
+<p>This document is the current method spec for mapping activation dimensions from
+several medical-reasoning models into one shared taxonomy. It should describe
+the selected pipeline, the active artifacts, and the checks that justify the
+current choices. It is not a history log.</p>
+<p>Historical ablations live in <code>medinterp/alignment2/ABLATIONS.md</code>. Exact judge
+prompts live in the scripts that call the judges.</p>
+<h2>Status</h2>
+<p>Input sentence table:</p>
+<div class="highlight"><pre><span></span><code>medinterp/alignment2/sentences.jsonl
+</code></pre></div>
+
+<p>Promoted pairwise correlation target:</p>
+<div class="highlight"><pre><span></span><code>medinterp/alignment/consistent_activation_ablation/zscore_signed_transition_path_empirical.correlations.json
+</code></pre></div>
+
+<p>Current selected method:</p>
+<div class="highlight"><pre><span></span><code>signed z-scored activations
+transition-filtered phase beliefs
+path-local sentence alignment weights
+reciprocal loopback repair
+no fixed anchor groups
+</code></pre></div>
+
+<p>The transition phase, signed z-score activation treatment, and path-local
+weights have been promoted from diagnostics. The promoted pairwise artifact and
+all downstream group, label, score, and annotation artifacts still need a full
+regeneration pass.</p>
+<p>The latest complete downstream artifacts are still the provisional no-fixed
+run:</p>
+<div class="highlight"><pre><span></span><code>medinterp/alignment/no_fixed_full_cases_groups.json
+medinterp/alignment/no_fixed_full_cases_group_labels.json
+medinterp/alignment/no_fixed_full_cases_group_labels.txt
+</code></pre></div>
+
+<h2>Inputs</h2>
+<p>Each row is one sentence from one model trace:</p>
+<div class="highlight"><pre><span></span><code>model
+pmcid
+sentence_index
+text
+activation_dimensions
+</code></pre></div>
+
+<p>The trace key is <code>(model, pmcid)</code>. The sentence key is
+<code>(model, pmcid, sentence_index)</code>. Sentence indices are zero-based and ordered
+within each trace.</p>
+<p>The current run aligns five models:</p>
+<div class="highlight"><pre><span></span><code>deepseek-r1-distill-llama-8b  D = 20
+deepseek-r1-distill-qwen-14b  D = 16
+gpt-oss-20b                   D = 20
+huatuogpt-o1-8b               D = 16
+qwq-32b                       D = 18
+</code></pre></div>
+
+<p>Do not discard sentences before matching. Short filler sentences, setup
+sentences, and degenerate-looking transitions can carry trace-position and
+state-transition evidence.</p>
+<p>Degenerate no-information sentences should be carved out first as an explicit
+reserved group. They remain in traces for transition modeling and path
+alignment, but they do not contribute semantic activation evidence to the
+ordinary dimension groups.</p>
+<h2>Pipeline</h2>
+<h3>1. Standardize Activations</h3>
+<p>Let <code>x[m,c,t,d]</code> be the raw activation for model <code>m</code>, case <code>c</code>, sentence <code>t</code>,
+and dimension <code>d</code>. Standardize each dimension within its source model:</p>
+<p><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mi>z</mi><mo stretchy="false">[</mo><mi>m</mi><mo separator="true">,</mo><mi>c</mi><mo separator="true">,</mo><mi>t</mi><mo separator="true">,</mo><mi>d</mi><mo stretchy="false">]</mo><mo>=</mo><mo stretchy="false">(</mo><mi>x</mi><mo stretchy="false">[</mo><mi>m</mi><mo separator="true">,</mo><mi>c</mi><mo separator="true">,</mo><mi>t</mi><mo separator="true">,</mo><mi>d</mi><mo stretchy="false">]</mo><mo>−</mo><mi>m</mi><mi>e</mi><mi>a</mi><mi>n</mi><mo stretchy="false">[</mo><mi>m</mi><mo separator="true">,</mo><mi>d</mi><mo stretchy="false">]</mo><mo stretchy="false">)</mo><mi mathvariant="normal">/</mi><mi>s</mi><mi>t</mi><mi>d</mi><mo stretchy="false">[</mo><mi>m</mi><mo separator="true">,</mo><mi>d</mi><mo stretchy="false">]</mo></mrow><annotation encoding="application/x-tex">
+z[m,c,t,d] = (x[m,c,t,d] - mean[m,d]) / std[m,d]
+</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.04398em;">z</span><span class="mopen">[</span><span class="mord mathnormal">m</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">c</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">t</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">d</span><span class="mclose">]</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord mathnormal">x</span><span class="mopen">[</span><span class="mord mathnormal">m</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">c</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">t</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">d</span><span class="mclose">]</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal">m</span><span class="mord mathnormal">e</span><span class="mord mathnormal">an</span><span class="mopen">[</span><span class="mord mathnormal">m</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">d</span><span class="mclose">])</span><span class="mord">/</span><span class="mord mathnormal">s</span><span class="mord mathnormal">t</span><span class="mord mathnormal">d</span><span class="mopen">[</span><span class="mord mathnormal">m</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">d</span><span class="mclose">]</span></span></span></span></span></p>
+<p>Use signed z-scored activations for cross-model dimension correlations:</p>
+<p><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mi>a</mi><mo stretchy="false">[</mo><mi>m</mi><mo separator="true">,</mo><mi>c</mi><mo separator="true">,</mo><mi>t</mi><mo separator="true">,</mo><mi>d</mi><mo stretchy="false">]</mo><mo>=</mo><mi>z</mi><mo stretchy="false">[</mo><mi>m</mi><mo separator="true">,</mo><mi>c</mi><mo separator="true">,</mo><mi>t</mi><mo separator="true">,</mo><mi>d</mi><mo stretchy="false">]</mo></mrow><annotation encoding="application/x-tex">
+a[m,c,t,d] = z[m,c,t,d]
+</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal">a</span><span class="mopen">[</span><span class="mord mathnormal">m</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">c</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">t</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">d</span><span class="mclose">]</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.04398em;">z</span><span class="mopen">[</span><span class="mord mathnormal">m</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">c</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">t</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">d</span><span class="mclose">]</span></span></span></span></span></p>
+<p>Use the absolute value of the final correlations during grouping, because two
+models may encode the same reasoning function with opposite activation
+direction.</p>
+<p>For phase tracking, convert the standardized activation vector into a soft
+observation over states:</p>
+<p><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mi>o</mi><mo stretchy="false">[</mo><mi>m</mi><mo separator="true">,</mo><mi>c</mi><mo separator="true">,</mo><mi>t</mi><mo stretchy="false">]</mo><mo>=</mo><mi>s</mi><mi>o</mi><mi>f</mi><mi>t</mi><mi>m</mi><mi>a</mi><msub><mi>x</mi><mi>d</mi></msub><mo stretchy="false">(</mo><mi>z</mi><mo stretchy="false">[</mo><mi>m</mi><mo separator="true">,</mo><mi>c</mi><mo separator="true">,</mo><mi>t</mi><mo separator="true">,</mo><mi>d</mi><mo stretchy="false">]</mo><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">
+o[m,c,t] = softmax_d(z[m,c,t,d])
+</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal">o</span><span class="mopen">[</span><span class="mord mathnormal">m</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">c</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">t</span><span class="mclose">]</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal">so</span><span class="mord mathnormal" style="margin-right:0.10764em;">f</span><span class="mord mathnormal">t</span><span class="mord mathnormal">ma</span><span class="mord"><span class="mord mathnormal">x</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">d</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mopen">(</span><span class="mord mathnormal" style="margin-right:0.04398em;">z</span><span class="mopen">[</span><span class="mord mathnormal">m</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">c</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">t</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">d</span><span class="mclose">])</span></span></span></span></span></p>
+<p>The soft observation keeps shared sentence functions visible instead of forcing
+every sentence into a single hard state.</p>
+<h3>2. Build State And Estimate Phase From The Path</h3>
+<p>For each model, assign every sentence a hard state for counting and transition
+estimation:</p>
+<p><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mi>h</mi><mo stretchy="false">[</mo><mi>m</mi><mo separator="true">,</mo><mi>c</mi><mo separator="true">,</mo><mi>t</mi><mo stretchy="false">]</mo><mo>=</mo><mi>a</mi><mi>r</mi><mi>g</mi><mi>m</mi><mi>a</mi><msub><mi>x</mi><mi>d</mi></msub><mi>x</mi><mo stretchy="false">[</mo><mi>m</mi><mo separator="true">,</mo><mi>c</mi><mo separator="true">,</mo><mi>t</mi><mo separator="true">,</mo><mi>d</mi><mo stretchy="false">]</mo></mrow><annotation encoding="application/x-tex">
+h[m,c,t] = argmax_d x[m,c,t,d]
+</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal">h</span><span class="mopen">[</span><span class="mord mathnormal">m</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">c</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">t</span><span class="mclose">]</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal">a</span><span class="mord mathnormal" style="margin-right:0.02778em;">r</span><span class="mord mathnormal" style="margin-right:0.03588em;">g</span><span class="mord mathnormal">ma</span><span class="mord"><span class="mord mathnormal">x</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">d</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mord mathnormal">x</span><span class="mopen">[</span><span class="mord mathnormal">m</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">c</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">t</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">d</span><span class="mclose">]</span></span></span></span></span></p>
+<p>Represent trace progress with 12 ordered bins over <code>[0,1]</code>. A sentence at
+position <code>t</code> in a trace of length <code>T[c]</code> lands at midpoint progress:</p>
+<p><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mi>r</mi><mo stretchy="false">[</mo><mi>c</mi><mo separator="true">,</mo><mi>t</mi><mo stretchy="false">]</mo><mo>=</mo><mo stretchy="false">(</mo><mi>t</mi><mo>+</mo><mn>1</mn><mi mathvariant="normal">/</mi><mn>2</mn><mo stretchy="false">)</mo><mi mathvariant="normal">/</mi><mi>T</mi><mo stretchy="false">[</mo><mi>c</mi><mo stretchy="false">]</mo></mrow><annotation encoding="application/x-tex">
+r[c,t] = (t + 1/2) / T[c]
+</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.02778em;">r</span><span class="mopen">[</span><span class="mord mathnormal">c</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">t</span><span class="mclose">]</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord mathnormal">t</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord">1/2</span><span class="mclose">)</span><span class="mord">/</span><span class="mord mathnormal" style="margin-right:0.13889em;">T</span><span class="mopen">[</span><span class="mord mathnormal">c</span><span class="mclose">]</span></span></span></span></span></p>
+<p>Each dimension gets an empirical phase profile:</p>
+<p><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mi>q</mi><mo stretchy="false">[</mo><mi>m</mi><mo separator="true">,</mo><mi>d</mi><mo separator="true">,</mo><mi>b</mi><mo stretchy="false">]</mo><mo>=</mo><mi>P</mi><mi>r</mi><mo stretchy="false">(</mo><mi>p</mi><mi>r</mi><mi>o</mi><mi>g</mi><mi>r</mi><mi>e</mi><mi>s</mi><msub><mi>s</mi><mi>b</mi></msub><mi>i</mi><mi>n</mi><mo>=</mo><mi>b</mi><mi mathvariant="normal">∣</mi><mi>h</mi><mi>a</mi><mi>r</mi><msub><mi>d</mi><mi>s</mi></msub><mi>t</mi><mi>a</mi><mi>t</mi><mi>e</mi><mo>=</mo><mi>d</mi><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">
+q[m,d,b] = Pr(progress_bin = b | hard_state = d)
+</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.03588em;">q</span><span class="mopen">[</span><span class="mord mathnormal">m</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">d</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">b</span><span class="mclose">]</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.13889em;">P</span><span class="mord mathnormal" style="margin-right:0.02778em;">r</span><span class="mopen">(</span><span class="mord mathnormal">p</span><span class="mord mathnormal" style="margin-right:0.02778em;">r</span><span class="mord mathnormal">o</span><span class="mord mathnormal" style="margin-right:0.03588em;">g</span><span class="mord mathnormal" style="margin-right:0.02778em;">r</span><span class="mord mathnormal">es</span><span class="mord"><span class="mord mathnormal">s</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">b</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mord mathnormal">in</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal">b</span><span class="mord">∣</span><span class="mord mathnormal">ha</span><span class="mord mathnormal" style="margin-right:0.02778em;">r</span><span class="mord"><span class="mord mathnormal">d</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">s</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mord mathnormal">t</span><span class="mord mathnormal">a</span><span class="mord mathnormal">t</span><span class="mord mathnormal">e</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal">d</span><span class="mclose">)</span></span></span></span></span></p>
+<p>If a dimension has no counts, use a uniform phase profile.</p>
+<p>Estimate state-to-state transitions from adjacent hard states in the same
+trace. This transition matrix is the local path model:</p>
+<p><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mi>A</mi><mo stretchy="false">[</mo><mi>m</mi><mo separator="true">,</mo><mi>i</mi><mo separator="true">,</mo><mi>j</mi><mo stretchy="false">]</mo><mo>=</mo><mi>P</mi><mi>r</mi><mo stretchy="false">(</mo><mi>h</mi><mo stretchy="false">[</mo><mi>m</mi><mo separator="true">,</mo><mi>c</mi><mo separator="true">,</mo><mi>t</mi><mo stretchy="false">]</mo><mo>=</mo><mi>j</mi><mi mathvariant="normal">∣</mi><mi>h</mi><mo stretchy="false">[</mo><mi>m</mi><mo separator="true">,</mo><mi>c</mi><mo separator="true">,</mo><mi>t</mi><mo>−</mo><mn>1</mn><mo stretchy="false">]</mo><mo>=</mo><mi>i</mi><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">
+A[m,i,j] = Pr(h[m,c,t] = j | h[m,c,t-1] = i)
+</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal">A</span><span class="mopen">[</span><span class="mord mathnormal">m</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">i</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.05724em;">j</span><span class="mclose">]</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.13889em;">P</span><span class="mord mathnormal" style="margin-right:0.02778em;">r</span><span class="mopen">(</span><span class="mord mathnormal">h</span><span class="mopen">[</span><span class="mord mathnormal">m</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">c</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">t</span><span class="mclose">]</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.05724em;">j</span><span class="mord">∣</span><span class="mord mathnormal">h</span><span class="mopen">[</span><span class="mord mathnormal">m</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">c</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">t</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord">1</span><span class="mclose">]</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal">i</span><span class="mclose">)</span></span></span></span></span></p>
+<p>For a fixed model <code>m</code>, row <code>i</code> describes which activation states usually
+follow state <code>i</code>. Rows are smoothed before normalization. This gives every
+transition nonzero support while preserving the observed path structure.</p>
+<p>For each trace, filter the current observation through the previous state
+belief:</p>
+<p><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mi>s</mi><mo stretchy="false">[</mo><mi>m</mi><mo separator="true">,</mo><mi>c</mi><mo separator="true">,</mo><mn>0</mn><mo stretchy="false">]</mo><mo>=</mo><mi>n</mi><mi>o</mi><mi>r</mi><mi>m</mi><mi>a</mi><mi>l</mi><mi>i</mi><mi>z</mi><mi>e</mi><mo stretchy="false">(</mo><mi>o</mi><mo stretchy="false">[</mo><mi>m</mi><mo separator="true">,</mo><mi>c</mi><mo separator="true">,</mo><mn>0</mn><mo stretchy="false">]</mo><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">
+s[m,c,0] = normalize(o[m,c,0])
+</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal">s</span><span class="mopen">[</span><span class="mord mathnormal">m</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">c</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">0</span><span class="mclose">]</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal">n</span><span class="mord mathnormal" style="margin-right:0.02778em;">or</span><span class="mord mathnormal">ma</span><span class="mord mathnormal" style="margin-right:0.01968em;">l</span><span class="mord mathnormal">i</span><span class="mord mathnormal" style="margin-right:0.04398em;">z</span><span class="mord mathnormal">e</span><span class="mopen">(</span><span class="mord mathnormal">o</span><span class="mopen">[</span><span class="mord mathnormal">m</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">c</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">0</span><span class="mclose">])</span></span></span></span></span></p>
+<p><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mi>s</mi><mo stretchy="false">[</mo><mi>m</mi><mo separator="true">,</mo><mi>c</mi><mo separator="true">,</mo><mi>t</mi><mo stretchy="false">]</mo><mo>=</mo><mi>n</mi><mi>o</mi><mi>r</mi><mi>m</mi><mi>a</mi><mi>l</mi><mi>i</mi><mi>z</mi><mi>e</mi><mo stretchy="false">(</mo><mi>o</mi><mo stretchy="false">[</mo><mi>m</mi><mo separator="true">,</mo><mi>c</mi><mo separator="true">,</mo><mi>t</mi><mo stretchy="false">]</mo><mo>∗</mo><mi>t</mi><mi>r</mi><mi>a</mi><mi>n</mi><mi>s</mi><mi>p</mi><mi>o</mi><mi>s</mi><mi>e</mi><mo stretchy="false">(</mo><mi>A</mi><mo stretchy="false">[</mo><mi>m</mi><mo stretchy="false">]</mo><mo stretchy="false">)</mo><mi>s</mi><mo stretchy="false">[</mo><mi>m</mi><mo separator="true">,</mo><mi>c</mi><mo separator="true">,</mo><mi>t</mi><mo>−</mo><mn>1</mn><mo stretchy="false">]</mo><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">
+s[m,c,t] = normalize(o[m,c,t] * transpose(A[m]) s[m,c,t-1])
+</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal">s</span><span class="mopen">[</span><span class="mord mathnormal">m</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">c</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">t</span><span class="mclose">]</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal">n</span><span class="mord mathnormal" style="margin-right:0.02778em;">or</span><span class="mord mathnormal">ma</span><span class="mord mathnormal" style="margin-right:0.01968em;">l</span><span class="mord mathnormal">i</span><span class="mord mathnormal" style="margin-right:0.04398em;">z</span><span class="mord mathnormal">e</span><span class="mopen">(</span><span class="mord mathnormal">o</span><span class="mopen">[</span><span class="mord mathnormal">m</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">c</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">t</span><span class="mclose">]</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">∗</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal">t</span><span class="mord mathnormal" style="margin-right:0.02778em;">r</span><span class="mord mathnormal">an</span><span class="mord mathnormal">s</span><span class="mord mathnormal">p</span><span class="mord mathnormal">ose</span><span class="mopen">(</span><span class="mord mathnormal">A</span><span class="mopen">[</span><span class="mord mathnormal">m</span><span class="mclose">])</span><span class="mord mathnormal">s</span><span class="mopen">[</span><span class="mord mathnormal">m</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">c</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">t</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord">1</span><span class="mclose">])</span></span></span></span></span></p>
+<p>Equivalently, <code>transpose(A[m]) s[m,c,t-1]</code> predicts which states are plausible
+next from the path so far, and <code>o[m,c,t]</code> corrects that prediction with the
+current sentence's activation evidence. This is where path information enters
+phase estimation.</p>
+<p>The sentence phase belief is the mixture of state phase profiles under the
+filtered state belief:</p>
+<p><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mi>p</mi><mo stretchy="false">[</mo><mi>m</mi><mo separator="true">,</mo><mi>c</mi><mo separator="true">,</mo><mi>t</mi><mo separator="true">,</mo><mi>b</mi><mo stretchy="false">]</mo><mo>=</mo><mi>s</mi><mi>u</mi><msub><mi>m</mi><mi>d</mi></msub><mi>s</mi><mo stretchy="false">[</mo><mi>m</mi><mo separator="true">,</mo><mi>c</mi><mo separator="true">,</mo><mi>t</mi><mo separator="true">,</mo><mi>d</mi><mo stretchy="false">]</mo><mi>q</mi><mo stretchy="false">[</mo><mi>m</mi><mo separator="true">,</mo><mi>d</mi><mo separator="true">,</mo><mi>b</mi><mo stretchy="false">]</mo></mrow><annotation encoding="application/x-tex">
+p[m,c,t,b] = sum_d s[m,c,t,d] q[m,d,b]
+</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal">p</span><span class="mopen">[</span><span class="mord mathnormal">m</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">c</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">t</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">b</span><span class="mclose">]</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal">s</span><span class="mord mathnormal">u</span><span class="mord"><span class="mord mathnormal">m</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">d</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mord mathnormal">s</span><span class="mopen">[</span><span class="mord mathnormal">m</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">c</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">t</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">d</span><span class="mclose">]</span><span class="mord mathnormal" style="margin-right:0.03588em;">q</span><span class="mopen">[</span><span class="mord mathnormal">m</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">d</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">b</span><span class="mclose">]</span></span></span></span></span></p>
+<p>Phase is therefore derived from path-filtered state beliefs, not from a
+hand-written monotone mask over raw sentence index.</p>
+<h3>3. Score Sentence Pairs</h3>
+<p>For each shared case and model pair, score every cross-model sentence pair.</p>
+<p>Text similarity uses L2-normalized <code>text-embedding-3-small</code> embeddings:</p>
+<p><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mi>t</mi><mi>e</mi><mi>x</mi><msub><mi>t</mi><mi>s</mi></msub><mi>i</mi><mi>m</mi><mo stretchy="false">(</mo><mi>u</mi><mo separator="true">,</mo><mi>v</mi><mo stretchy="false">)</mo><mo>=</mo><mi>m</mi><mi>a</mi><mi>x</mi><mo stretchy="false">(</mo><mn>0</mn><mo separator="true">,</mo><mi>d</mi><mi>o</mi><mi>t</mi><mo stretchy="false">(</mo><mi>e</mi><mi>m</mi><mi>b</mi><mi>e</mi><mi>d</mi><mi>d</mi><mi>i</mi><mi>n</mi><mi>g</mi><mo stretchy="false">[</mo><mi>u</mi><mo stretchy="false">]</mo><mo separator="true">,</mo><mi>e</mi><mi>m</mi><mi>b</mi><mi>e</mi><mi>d</mi><mi>d</mi><mi>i</mi><mi>n</mi><mi>g</mi><mo stretchy="false">[</mo><mi>v</mi><mo stretchy="false">]</mo><mo stretchy="false">)</mo><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">
+text_sim(u,v) = max(0, dot(embedding[u], embedding[v]))
+</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal">t</span><span class="mord mathnormal">e</span><span class="mord mathnormal">x</span><span class="mord"><span class="mord mathnormal">t</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">s</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mord mathnormal">im</span><span class="mopen">(</span><span class="mord mathnormal">u</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.03588em;">v</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal">ma</span><span class="mord mathnormal">x</span><span class="mopen">(</span><span class="mord">0</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">d</span><span class="mord mathnormal">o</span><span class="mord mathnormal">t</span><span class="mopen">(</span><span class="mord mathnormal">e</span><span class="mord mathnormal">mb</span><span class="mord mathnormal">e</span><span class="mord mathnormal">dd</span><span class="mord mathnormal">in</span><span class="mord mathnormal" style="margin-right:0.03588em;">g</span><span class="mopen">[</span><span class="mord mathnormal">u</span><span class="mclose">]</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">e</span><span class="mord mathnormal">mb</span><span class="mord mathnormal">e</span><span class="mord mathnormal">dd</span><span class="mord mathnormal">in</span><span class="mord mathnormal" style="margin-right:0.03588em;">g</span><span class="mopen">[</span><span class="mord mathnormal" style="margin-right:0.03588em;">v</span><span class="mclose">]))</span></span></span></span></span></p>
+<p>Phase similarity is cosine similarity between transition-filtered phase
+beliefs:</p>
+<p><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mi>p</mi><mi>h</mi><mi>a</mi><mi>s</mi><msub><mi>e</mi><mi>s</mi></msub><mi>i</mi><mi>m</mi><mo stretchy="false">(</mo><mi>u</mi><mo separator="true">,</mo><mi>v</mi><mo stretchy="false">)</mo><mo>=</mo><mi>c</mi><mi>o</mi><mi>s</mi><mi>i</mi><mi>n</mi><mi>e</mi><mo stretchy="false">(</mo><mi>p</mi><mo stretchy="false">[</mo><mi>u</mi><mo stretchy="false">]</mo><mo separator="true">,</mo><mi>p</mi><mo stretchy="false">[</mo><mi>v</mi><mo stretchy="false">]</mo><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">
+phase_sim(u,v) = cosine(p[u], p[v])
+</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal">p</span><span class="mord mathnormal">ha</span><span class="mord mathnormal">s</span><span class="mord"><span class="mord mathnormal">e</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">s</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mord mathnormal">im</span><span class="mopen">(</span><span class="mord mathnormal">u</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.03588em;">v</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal">cos</span><span class="mord mathnormal">in</span><span class="mord mathnormal">e</span><span class="mopen">(</span><span class="mord mathnormal">p</span><span class="mopen">[</span><span class="mord mathnormal">u</span><span class="mclose">]</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">p</span><span class="mopen">[</span><span class="mord mathnormal" style="margin-right:0.03588em;">v</span><span class="mclose">])</span></span></span></span></span></p>
+<p>The sentence pair score is:</p>
+<p><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mi>M</mi><mo stretchy="false">[</mo><mi>u</mi><mo separator="true">,</mo><mi>v</mi><mo stretchy="false">]</mo><mo>=</mo><mi>t</mi><mi>e</mi><mi>x</mi><msub><mi>t</mi><mi>s</mi></msub><mi>i</mi><mi>m</mi><mo stretchy="false">(</mo><mi>u</mi><mo separator="true">,</mo><mi>v</mi><mo stretchy="false">)</mo><mo>∗</mo><mi>p</mi><mi>h</mi><mi>a</mi><mi>s</mi><msub><mi>e</mi><mi>s</mi></msub><mi>i</mi><mi>m</mi><mo stretchy="false">(</mo><mi>u</mi><mo separator="true">,</mo><mi>v</mi><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">
+M[u,v] = text_sim(u,v) * phase_sim(u,v)
+</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.10903em;">M</span><span class="mopen">[</span><span class="mord mathnormal">u</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.03588em;">v</span><span class="mclose">]</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal">t</span><span class="mord mathnormal">e</span><span class="mord mathnormal">x</span><span class="mord"><span class="mord mathnormal">t</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">s</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mord mathnormal">im</span><span class="mopen">(</span><span class="mord mathnormal">u</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.03588em;">v</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">∗</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal">p</span><span class="mord mathnormal">ha</span><span class="mord mathnormal">s</span><span class="mord"><span class="mord mathnormal">e</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">s</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mord mathnormal">im</span><span class="mopen">(</span><span class="mord mathnormal">u</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.03588em;">v</span><span class="mclose">)</span></span></span></span></span></p>
+<h3>4. Build Sentence Alignment Path Weights</h3>
+<p>Use path-local alignment weights. For each source sentence, find monotone
+target paths through the target trace and accumulate the local probability
+that the source sentence aligns to each target sentence. This uses the whole
+sentence-pair score matrix for the case, rather than only a small local anchor
+chunk.</p>
+<p>Then apply reciprocal loopback repair. A sentence pair receives weight only
+when both directions agree that the pair is plausible:</p>
+<p><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mi>W</mi><mo stretchy="false">[</mo><mi>u</mi><mo separator="true">,</mo><mi>v</mi><mo stretchy="false">]</mo><mo>=</mo><mi>l</mi><mi>o</mi><mi>c</mi><mi>a</mi><msub><mi>l</mi><mi>w</mi></msub><mi>e</mi><mi>i</mi><mi>g</mi><mi>h</mi><mi>t</mi><mo stretchy="false">(</mo><mi>u</mi><mo>−</mo><mo>&gt;</mo><mi>v</mi><mo stretchy="false">)</mo><mo>∗</mo><mi>l</mi><mi>o</mi><mi>c</mi><mi>a</mi><msub><mi>l</mi><mi>w</mi></msub><mi>e</mi><mi>i</mi><mi>g</mi><mi>h</mi><mi>t</mi><mo stretchy="false">(</mo><mi>v</mi><mo>−</mo><mo>&gt;</mo><mi>u</mi><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">
+W[u,v] = local_weight(u -&gt; v) * local_weight(v -&gt; u)
+</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.13889em;">W</span><span class="mopen">[</span><span class="mord mathnormal">u</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.03588em;">v</span><span class="mclose">]</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.01968em;">l</span><span class="mord mathnormal">oc</span><span class="mord mathnormal">a</span><span class="mord"><span class="mord mathnormal" style="margin-right:0.01968em;">l</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:-0.0197em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.02691em;">w</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mord mathnormal">e</span><span class="mord mathnormal">i</span><span class="mord mathnormal" style="margin-right:0.03588em;">g</span><span class="mord mathnormal">h</span><span class="mord mathnormal">t</span><span class="mopen">(</span><span class="mord mathnormal">u</span><span class="mord">−</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">&gt;</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.03588em;">v</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">∗</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.01968em;">l</span><span class="mord mathnormal">oc</span><span class="mord mathnormal">a</span><span class="mord"><span class="mord mathnormal" style="margin-right:0.01968em;">l</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:-0.0197em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.02691em;">w</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mord mathnormal">e</span><span class="mord mathnormal">i</span><span class="mord mathnormal" style="margin-right:0.03588em;">g</span><span class="mord mathnormal">h</span><span class="mord mathnormal">t</span><span class="mopen">(</span><span class="mord mathnormal" style="margin-right:0.03588em;">v</span><span class="mord">−</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">&gt;</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal">u</span><span class="mclose">)</span></span></span></span></span></p>
+<p>Normalize weights per case before accumulating dimension correlations.</p>
+<p>This is separate from the path-filtered phase estimate above. Step 2 uses
+within-model state transitions to estimate each sentence's phase. Step 4 uses
+cross-model monotone paths to decide which sentence pairs should receive
+correlation weight.</p>
+<p>Path-local repair is selected over the older anchor-chunk repair because it
+improved top-ranked judge precision in diagnostics while preserving the same
+loopback agreement principle.</p>
+<h3>5. Estimate Dimension Similarity</h3>
+<p>For every model pair and dimension pair, compute a weighted Pearson
+correlation over aligned sentence pairs:</p>
+<p><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mi>c</mi><mi>o</mi><mi>r</mi><mi>r</mi><mo stretchy="false">(</mo><mi>d</mi><mn>1</mn><mo separator="true">,</mo><mi>d</mi><mn>2</mn><mo stretchy="false">)</mo><mo>=</mo><mi>w</mi><mi>e</mi><mi>i</mi><mi>g</mi><mi>h</mi><mi>t</mi><mi>e</mi><msub><mi>d</mi><mi>c</mi></msub><mi>o</mi><mi>r</mi><mi>r</mi><mo stretchy="false">(</mo><mi>a</mi><mo stretchy="false">[</mo><mi>u</mi><mo separator="true">,</mo><mi>d</mi><mn>1</mn><mo stretchy="false">]</mo><mo separator="true">,</mo><mi>a</mi><mo stretchy="false">[</mo><mi>v</mi><mo separator="true">,</mo><mi>d</mi><mn>2</mn><mo stretchy="false">]</mo><mo separator="true">,</mo><mi>W</mi><mo stretchy="false">[</mo><mi>u</mi><mo separator="true">,</mo><mi>v</mi><mo stretchy="false">]</mo><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">
+corr(d1,d2) = weighted_corr(a[u,d1], a[v,d2], W[u,v])
+</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.02778em;">cor</span><span class="mord mathnormal" style="margin-right:0.02778em;">r</span><span class="mopen">(</span><span class="mord mathnormal">d</span><span class="mord">1</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">d</span><span class="mord">2</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.02691em;">w</span><span class="mord mathnormal">e</span><span class="mord mathnormal">i</span><span class="mord mathnormal" style="margin-right:0.03588em;">g</span><span class="mord mathnormal">h</span><span class="mord mathnormal">t</span><span class="mord mathnormal">e</span><span class="mord"><span class="mord mathnormal">d</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">c</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mord mathnormal" style="margin-right:0.02778em;">or</span><span class="mord mathnormal" style="margin-right:0.02778em;">r</span><span class="mopen">(</span><span class="mord mathnormal">a</span><span class="mopen">[</span><span class="mord mathnormal">u</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">d</span><span class="mord">1</span><span class="mclose">]</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">a</span><span class="mopen">[</span><span class="mord mathnormal" style="margin-right:0.03588em;">v</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">d</span><span class="mord">2</span><span class="mclose">]</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.13889em;">W</span><span class="mopen">[</span><span class="mord mathnormal">u</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.03588em;">v</span><span class="mclose">])</span></span></span></span></span></p>
+<p>Store signed correlations in the pairwise artifact. Use <code>abs(corr)</code> when
+optimizing cross-model groups.</p>
+<h3>6. Carve Out Degenerate Sentences</h3>
+<p>Before optimizing semantic dimension groups, identify sentences whose trace
+function is no-information scaffolding: setup, transition, restatement,
+closure, formatting, or otherwise non-semantic connective text.</p>
+<p>Assign these sentences to a reserved degenerate group:</p>
+<div class="highlight"><pre><span></span><code>group_index = -1
+label = Degenerate No-Information
+</code></pre></div>
+
+<p>This group is part of the taxonomy state space, but not a recovered semantic
+dimension group. Keep its sentences in case traces so transitions into and out
+of no-information text remain visible. Exclude its sentence evidence from
+semantic group labeling and from the judge samples used to decide whether
+ordinary dimensions serve the same trace function.</p>
+<p>The degenerate group is carved out before grouping so the optimizer is not
+forced to explain no-information text by merging unrelated dimensions into a
+residual semantic group.</p>
+<h3>7. Optimize Dimension Groups</h3>
+<p>The grouping target is a shared taxonomy where a dimension can belong to at
+most one group and a useful group can contain dimensions from multiple models.
+The next grouping pass should optimize the current three evaluation
+properties directly:</p>
+<div class="highlight"><pre><span></span><code>completeness:   every useful sample belongs to at least one group
+consistency:    merged groups describe aligned trace functions
+orthogonality:  a sample belongs to only one group
+</code></pre></div>
+
+<p>The operational objective should reward within-group pairwise evidence and
+penalize leaked evidence to outside dimensions. Grouping should not use fixed
+human anchor groups. The previous fixed U1/U7 anchors are diagnostics only.</p>
+<p>Until the promoted pairwise artifact is regenerated and grouped, the complete
+no-fixed artifacts are provisional.</p>
+<h3>8. Label Groups</h3>
+<p>For each group, collect high-activation evidence sentences from all member
+dimensions. The labeler proposes a concise shared reasoning-function label and
+records supporting examples.</p>
+<p>The judge system is organized around completeness, consistency, and
+orthogonality:</p>
+<div class="highlight"><pre><span></span><code>consistency:    do the sampled member dimensions serve the same trace function?
+orthogonality:  is the sampled evidence better explained by only this group?
+completeness:   does the taxonomy give each sampled trace function a home?
+</code></pre></div>
+
+<p>The critic should propose concrete changes that would improve those measures.
+After applying changes, resample evidence and repeat until the critic no
+longer identifies material improvements.</p>
+<p>Do not ask the semantic labeler to name the reserved degenerate group. Its
+label is fixed by policy.</p>
+<h3>9. Project Sentences To Taxonomy States</h3>
+<p>After groups are labeled, project each sentence back onto the taxonomy.</p>
+<p>For each sentence and group, aggregate member dimension activations. Assign the
+sentence to the best supported taxonomy group, preserving the source model,
+case, sentence index, text, and activation evidence.</p>
+<p>If a sentence was carved out as degenerate, project it to the reserved
+degenerate group rather than to the highest-activation semantic group. This is
+not a late override that creates a new state after the taxonomy is finished;
+it is the projection of the first carved-out taxonomy group.</p>
+<h2>Selection Evidence</h2>
+<p>The current method choices were promoted by small LLM-judged diagnostics that
+ask whether matched evidence serves the same function in the trace.</p>
+<div class="highlight"><pre><span></span><code>transition path vs old canonical phase
+  judged=65 positive=29
+  old canonical: AP=0.707 AUC=0.784 p@10=0.700 p@25=0.600 p@50=0.560
+  transition path: AP=0.748 AUC=0.816 p@10=0.800 p@25=0.680 p@50=0.580
+
+activation treatment under transition scorer
+  judged=37 positive=28
+  raw_positive: AP=0.814 AUC=0.540 p@25=0.720
+  raw_signed: AP=0.814 AUC=0.540 p@25=0.720
+  zscore_positive: AP=0.832 AUC=0.675 p@25=0.840
+  zscore_signed: AP=0.836 AUC=0.687 p@25=0.840
+
+anchor chunk vs path-local repair
+  judged=198 positive=87
+  anchor chunk: AP=0.553 AUC=0.631 p@10=0.600 p@25=0.560 p@50=0.620
+  path-local: AP=0.577 AUC=0.597 p@10=0.700 p@25=0.640 p@50=0.640
+</code></pre></div>
+
+<p>The path-local result has lower AUC than anchor chunks, but better AP and
+top-ranked precision. This pipeline cares most about the selected high-scoring
+dimension matches that drive grouping, so path-local repair is promoted.</p>
+<h2>Regeneration Order</h2>
+<p>Run the selected pipeline in this order:</p>
+<div class="highlight"><pre><span></span><code>1. build per-model state machines
+2. regenerate pairwise correlations with signed z-score transition path repair
+3. identify and reserve the degenerate no-information group
+4. regroup semantic dimensions without fixed anchors
+5. relabel groups with completeness/consistency/orthogonality judging
+6. resample and revise labels/groups until judge feedback converges
+7. project sentences onto the final taxonomy, including group -1
+8. rerun diagnostics and semantic scores
+</code></pre></div>
+
+<p>The method config in <code>medinterp/alignment2/METHOD_CONFIG.json</code> is the source of
+truth for artifact paths and selected runtime parameters.</p>
+  </div>
+</article>
+    </main>
+  </div>
+</body>
+</html>
