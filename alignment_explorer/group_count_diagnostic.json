@@ -1,0 +1,32 @@
+{
+  "objective": "semantic_phase_kernel_mean",
+  "selection_rule": "smallest groups within one SE of best",
+  "selected_groups": 9,
+  "best_groups": 9,
+  "one_se_threshold": 0.018687278105062433,
+  "rows": [
+    {
+      "groups": 9,
+      "projection_slack": 1,
+      "min_group_dimensions": 5,
+      "max_group_dimensions": 12,
+      "singleton_model_group_slots": 23,
+      "all_phase_kernel_mean": 0.0193952489644289,
+      "all_phase_kernel_sem": 0.00023114831128623337,
+      "all_phase_mse": 0.002513261279091239,
+      "all_phase_l1": 0.026695001870393753,
+      "all_abs_mean_error": 0.07810229808092117,
+      "all_abs_var_error": 0.011354411020874977,
+      "semantic_phase_kernel_mean": 0.018459396436810493,
+      "semantic_phase_kernel_sem": 0.00022788166825193912,
+      "semantic_phase_mse": 0.0019273852230980992,
+      "semantic_phase_l1": 0.023341331630945206,
+      "semantic_abs_mean_error": 0.06808481365442276,
+      "semantic_abs_var_error": 0.009404965676367283,
+      "semantic_kernel_improvement": NaN,
+      "semantic_kernel_relative_improvement": NaN,
+      "within_one_se_of_best": true,
+      "one_se_selected": true
+    }
+  ]
+}
