@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lunar Sim</title>
+  <link rel="canonical" href="https://ogame.squareqrow.com/lunar_sim/">
+</head>
+<body>
+  <a id="simulator" href="https://ogame.squareqrow.com/lunar_sim/">Open Lunar Sim</a>
+  <script>
+    const destination = "https://ogame.squareqrow.com/lunar_sim/"
+      + location.search + location.hash;
+    document.getElementById("simulator").href = destination;
+    location.replace(destination);
+  </script>
+</body>
+</html>
